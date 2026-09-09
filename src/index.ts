@@ -52,6 +52,7 @@ export * from './breakdown';
 export * from './health';
 export * from './report';
 export * from './afford';
+export * from './goals';
 
 // ── Commitments, forecasting and reminders ────────────────────────────────────
 export * from './recurring';
