@@ -495,6 +495,24 @@ export interface BudgetInput {
  * "healthy", but at 60% on day 6 it is flagged, because the point of the app is to
  * warn before the money is gone rather than confirm it afterwards.
  */
+export interface BudgetProjectionOptions {
+  /**
+   * Projected total spend for the whole cycle, when the caller has a better one than
+   * a straight line — `computeVelocity().projectedTotal`, which projects against the
+   * user's own historical shape.
+   *
+   * Used ONLY for the overall budget (`categoryId: null`), because that budget covers
+   * exactly the quantity velocity projects. Without this the two disagree: on the same
+   * data the budgets screen said the cycle would finish around 7,200 while the
+   * affordability screen said 13,600, and both were answering "what will this cycle
+   * total". A user who compares two screens and finds two answers stops believing
+   * either.
+   *
+   * Category budgets keep the straight line regardless — see below.
+   */
+  overallProjectedTotal?: Minor;
+}
+
 export function evaluateBudgets(
   budgets: readonly BudgetInput[],
   transactions: readonly AnalyzableTransaction[],
@@ -502,6 +520,7 @@ export function evaluateBudgets(
   progress: CycleProgress,
   options: LedgerOptions = DEFAULT_LEDGER_OPTIONS,
   nearLimitPercent = 85,
+  projection: BudgetProjectionOptions = {},
 ): BudgetEvaluation[] {
   const overallSpend = totalsOf(transactions, options).totalSpend;
   const elapsed = Math.max(progress.elapsedFraction, 0.0001);
@@ -520,9 +539,22 @@ export function evaluateBudgets(
             );
 
       const percentUsed = percentage(spent, budget.amount);
-      // Straight-line projection is right here: a category budget is a straight-line
-      // allowance, and the curve-based projection belongs to the whole-cycle view.
-      const projected = progress.isComplete ? spent : divide(spent, elapsed);
+
+      // A CATEGORY budget keeps the straight line, and deliberately: a category
+      // allowance is meant to be spent evenly, and the whole-cycle curve is dominated
+      // by rent and EMIs landing on day one — a shape that says nothing about
+      // groceries.
+      //
+      // The OVERALL budget is different. It covers precisely the quantity
+      // `computeVelocity` projects, so when the caller supplies that projection it is
+      // used here too. Two functions projecting one quantity by two methods is how an
+      // app ends up quoting different answers to the same question on two screens.
+      const straightLine = divide(spent, elapsed);
+      const projected = progress.isComplete
+        ? spent
+        : budget.categoryId === null && projection.overallProjectedTotal !== undefined
+          ? projection.overallProjectedTotal
+          : straightLine;
       const projectedOverspend = clampAtZero(sub(projected, budget.amount));
 
       let status: BudgetStatus = 'healthy';

@@ -273,6 +273,59 @@ describe('evaluateBudgets', () => {
     expect(byId(null).label).toBe('Overall');
   });
 
+  it('uses a supplied whole-cycle projection for the OVERALL budget', () => {
+    // The budgets view and the velocity view both answer "what will this cycle
+    // total". Left to themselves they answered differently — a straight line here,
+    // the user's historical shape there — and a user comparing two screens found two
+    // numbers for one question.
+    const shared = A.evaluateBudgets(
+      [{ categoryId: null, amount: fromMajor('50000') }],
+      ledger,
+      categoryIndex,
+      cycleProgress(august, '2026-08-15'),
+      undefined,
+      undefined,
+      { overallProjectedTotal: fromMajor('60000') },
+    );
+
+    expect(shared[0]!.projected).toBe(rs(60000));
+    expect(shared[0]!.projectedOverspend).toBe(rs(10000));
+    expect(shared[0]!.status).toBe('projected_over');
+  });
+
+  it('leaves CATEGORY budgets on the straight line even when a projection is supplied', () => {
+    // A category allowance is meant to be spent evenly, and the whole-cycle curve is
+    // dominated by rent landing on day one — a shape that says nothing about food.
+    const withProjection = A.evaluateBudgets(
+      budgets,
+      ledger,
+      categoryIndex,
+      cycleProgress(august, '2026-08-15'),
+      undefined,
+      undefined,
+      { overallProjectedTotal: fromMajor('60000') },
+    );
+    const plain = A.evaluateBudgets(budgets, ledger, categoryIndex, cycleProgress(august, '2026-08-15'));
+
+    const food = (list: typeof plain) => list.find((e) => e.categoryId === cat('food'))!;
+    expect(food(withProjection).projected).toBe(food(plain).projected);
+  });
+
+  it('ignores the supplied projection once the cycle is complete', () => {
+    // A finished cycle has an actual total; projecting it would replace a fact with
+    // an estimate.
+    const complete = A.evaluateBudgets(
+      [{ categoryId: null, amount: fromMajor('50000') }],
+      ledger,
+      categoryIndex,
+      cycleProgress(august, '2026-09-30'),
+      undefined,
+      undefined,
+      { overallProjectedTotal: fromMajor('60000') },
+    );
+    expect(complete[0]!.projected).toBe(rs(12250));
+  });
+
   it('sorts the most urgent budget first', () => {
     expect(evaluations[0]!.status).toBe('over_budget');
   });
