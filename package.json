@@ -1,0 +1,44 @@
+{
+  "name": "finance-core",
+  "version": "1.0.0",
+  "description": "Portable domain layer for a personal spending tracker: money arithmetic, ledger semantics, salary cycles, analytics, forecasting, statement import and a financial health score. No UI, no database, no platform bindings.",
+  "license": "UNLICENSED",
+  "private": true,
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./import": {
+      "types": "./dist/import/index.d.ts",
+      "default": "./dist/import/index.js"
+    },
+    "./schema/*": "./schema/*"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist",
+    "schema",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json && node scripts/fix-esm-extensions.mjs",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "prepublishOnly": "npm run typecheck && npm run test && npm run build"
+  },
+  "dependencies": {
+    "papaparse": "^5.7.0",
+    "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz"
+  },
+  "devDependencies": {
+    "@types/node": "^26.3.0",
+    "@types/papaparse": "^5.5.2",
+    "typescript": "~6.0.3",
+    "vitest": "^4.1.11"
+  }
+}
