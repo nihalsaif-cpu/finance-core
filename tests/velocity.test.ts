@@ -105,6 +105,40 @@ describe('computeVelocity — derived figures', () => {
     expect(early.confidence).toBe('low');
   });
 
+  it('sets aside committed money before saying what is safe to spend daily', () => {
+    // Without this the daily figure includes the rent. A user who follows it exactly
+    // overshoots by precisely the rent, having been told the number was "safe".
+    const withoutRent = V.computeVelocity({
+      progress: progressAt(10),
+      spentToDate: fromMajor('20000'),
+      referenceAmount: fromMajor('62000'),
+    });
+    const withRent = V.computeVelocity({
+      progress: progressAt(10),
+      spentToDate: fromMajor('20000'),
+      referenceAmount: fromMajor('62000'),
+      upcomingCommitments: fromMajor('21000'),
+    });
+
+    // 42,000 left either way; only 21,000 of it is free to decide about.
+    expect(withRent.remaining).toBe(fromMajor('42000'));
+    expect(withRent.spendable).toBe(fromMajor('21000'));
+
+    expect(withoutRent.safeDailySpend).toBe(fromMajor('2000'));
+    expect(withRent.safeDailySpend).toBe(fromMajor('1000'));
+  });
+
+  it('reports zero rather than negative when commitments exceed what is left', () => {
+    const result = V.computeVelocity({
+      progress: progressAt(10),
+      spentToDate: fromMajor('20000'),
+      referenceAmount: fromMajor('62000'),
+      upcomingCommitments: fromMajor('90000'),
+    });
+    expect(result.spendable).toBe(0);
+    expect(result.safeDailySpend).toBe(0);
+  });
+
   it('never projects below money already spent plus committed charges', () => {
     const result = V.computeVelocity({
       progress: progressAt(28),

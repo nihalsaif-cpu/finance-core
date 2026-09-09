@@ -159,10 +159,19 @@ export interface VelocityResult {
   /** referenceAmount − projectedTotal, clamped at zero. */
   projectedSurplus: Minor;
   averageDailySpend: Minor;
-  /** What can be spent per remaining day to land exactly on the reference amount. */
+  /**
+   * What can be spent per remaining day to land on the reference amount, AFTER
+   * setting aside commitments still due. Spending this much every day is safe in the
+   * sense the name claims — it does not quietly include the rent.
+   */
   safeDailySpend: Minor;
-  /** Reference amount not yet spent, clamped at zero. */
+  /** Reference amount not yet spent, clamped at zero. Ignores what is still owed. */
   remaining: Minor;
+  /**
+   * `remaining` less commitments still due this cycle — the money genuinely free to
+   * decide about, and the basis for `safeDailySpend`.
+   */
+  spendable: Minor;
   method: ProjectionMethod;
   confidence: Confidence;
   daysRemaining: number;
@@ -224,6 +233,16 @@ export function computeVelocity(input: VelocityInput): VelocityResult {
   const projectedTotal = fromMinor(Math.max(projectedRaw, floor));
 
   const remaining = clampAtZero(sub(referenceAmount, spentToDate));
+
+  // What is genuinely available to DECIDE about: what is left, less what is already
+  // owed before the cycle ends.
+  //
+  // `remaining` alone is the wrong basis for a daily allowance. Told they may spend
+  // `remaining / daysRemaining` while rent is still due, a user who follows the advice
+  // exactly overshoots by precisely the rent — and the number that misled them was
+  // labelled "safe". `upcomingCommitments` was already accepted here and used only to
+  // floor the projection, which left the one figure people act on ignoring it.
+  const spendable = clampAtZero(sub(remaining, upcoming));
   const daysRemaining = progress.daysRemaining;
 
   return {
@@ -236,8 +255,9 @@ export function computeVelocity(input: VelocityInput): VelocityResult {
     projectedOverspend: clampAtZero(sub(projectedTotal, referenceAmount)),
     projectedSurplus: clampAtZero(sub(referenceAmount, projectedTotal)),
     averageDailySpend: progress.daysElapsed > 0 ? divide(spentToDate, progress.daysElapsed) : ZERO,
-    safeDailySpend: daysRemaining > 0 ? divide(remaining, daysRemaining) : remaining,
+    safeDailySpend: daysRemaining > 0 ? divide(spendable, daysRemaining) : spendable,
     remaining,
+    spendable,
     method,
     confidence: confidenceOf(curve.cyclesUsed, historicalTotals.length, elapsed),
     daysRemaining,
