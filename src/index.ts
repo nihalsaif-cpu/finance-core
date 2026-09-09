@@ -54,6 +54,7 @@ export * from './report';
 export * from './afford';
 export * from './goals';
 export * from './loans';
+export * from './portfolio';
 
 // ── Commitments, forecasting and reminders ────────────────────────────────────
 export * from './recurring';
