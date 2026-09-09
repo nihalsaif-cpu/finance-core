@@ -1,0 +1,35 @@
+# Typecheck, tests and build for the domain package.
+#
+# The BUILD step is not optional decoration. Consumers import this package's `dist/`,
+# which is gitignored, so a change that typechecks and passes tests but fails to emit
+# would break every app that depends on it while this suite stayed green.
+
+name: CI
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: Typecheck, tests and build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build

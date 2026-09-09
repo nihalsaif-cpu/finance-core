@@ -1,0 +1,19 @@
+#!/bin/sh
+# Refuse a commit that does not typecheck, pass the tests, or BUILD.
+#
+# The build matters as much as the tests here. This package is consumed through its
+# `dist/`, which is gitignored — so source that compiles under `tsc --noEmit` but fails
+# to emit would break every consumer while every test still passed.
+#
+# Enabled by `git config core.hooksPath .githooks`.
+# Bypass for a genuine work-in-progress commit:  git commit --no-verify
+
+set -e
+
+if [ ! -d node_modules ]; then
+  echo "pre-commit: node_modules is missing — run 'npm install' first." >&2
+  exit 1
+fi
+
+echo "pre-commit: typecheck + tests + build…"
+npm run --silent verify
